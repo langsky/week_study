@@ -525,3 +525,84 @@ LOCAL_MODULE_CLASS 定义模块的分类，根据分类会将模块放在目标�
 
 LCOAL_MODULE_NAME 指定模块的名称
 ```
+
+## Android应用签名
+
+**生成签名文件**
+
+```
+keytool -genkey -v -keystore tom.keystore -alias tom_key -keyalg RSA -validity 1000
+
+-keystore tom.keystore 证书文件名
+-alias tom_key 别名
+-keyalg RSA 加密方式
+-validity 1000 有效期1000天
+```
+**为Apk签名**
+
+```
+jarsigner -verbose -keystore tom.keystore -signedjar test_signed.apk test.apk tom_key
+
+-verbose 打印签名过程
+-keystore tom.keystore 指定签名文件
+-signedjar test_signed.apk 签名后的文件名
+```
+
+**处理异常**
+
+```
+jarsigner: unable to sign jar: java.util.zip.ZipException: invalid entry compressed size
+```
+
+删除META-INF文件夹再打包，原因是使用新的签名时必须删除旧的签名文件。
+
+**校验签名**
+
+```
+jarsigner -verify -verbose -certs test_signed.apk
+```
+
+**4K对齐**
+
+```
+zipalign -v 4 test_signed.apk test_align.apk
+```
+
+## Android系统签名
+
+在目录`build/product/security`目录下存在四组后缀为.x509.pem（公钥）和.pk8（私钥）文件。分别代表四种系统签名。
+
+```
+testkey 普通apk
+platform 系统核心apk
+shared 启动器，联系人等apk
+media 多媒体和下载类apk
+```
+
+**生成系统签名文件**
+
+```
+development/tools
+
+make_key testkey '/C=CN/ST=BJ/L=BJ/O=Google/OU=Android/CN=Tom/emailAddress=tom@1.com'
+
+testkey 是生成签名文件的类型，后续的参数是签名的信息
+```
+
+**指定签名文件路径**
+
+可以直接将签名文件覆盖掉`build/product/security`，或者新建一个目录，并指定该目录的属性，比如在`device/lge/hammerhead/security`目录下，在device.mk中添加如下属性：
+
+```
+PRODUCT_DEFAULT_DEV_CERTIFICATE := device/lge/hammerhead/security
+```
+
+**签名apk**
+
+在随源码编译的Apk，不需要手动去签名。
+
+如果想手动签名的话，使用如下指令：
+
+```
+java -jar signapk.jar platform.x509.pem platform.pk8 test.apk test_signed.apk
+```
